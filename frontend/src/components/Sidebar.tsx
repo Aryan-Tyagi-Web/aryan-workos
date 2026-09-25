@@ -9,7 +9,7 @@ function Sidebar() {
     }`;
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 border-r border-slate-800 bg-slate-950 p-5">
+    <aside className="fixed left-0 top-0 h-screen w-64 overflow-y-auto border-r border-slate-800 bg-slate-950 p-5">
       {/* Logo */}
       <div className="mb-8">
         <h1 className="text-xl font-bold text-white">Aryan WorkOS</h1>
