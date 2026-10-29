@@ -14,6 +14,7 @@ function App() {
           <Routes>
             <Route path="/dashboard" element={<Dashboard />} />
 
+            {/* Current Projects Route */}
             <Route
               path="/projects/current"
               element={<CurrentProjects />}
