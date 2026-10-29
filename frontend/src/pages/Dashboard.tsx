@@ -1,8 +1,31 @@
+
+import { useState } from "react";
+
+type Project = {
+  id: number;
+  name: string;
+  client: string;
+  type: string;
+  technology: string;
+  progress: number;
+  deadline: string;
+  revenue: string;
+};
+
 function Dashboard() {
+  const [projects] = useState<Project[]>(() => {
+    try {
+      const savedProjects = localStorage.getItem("aryan-workos-projects");
+      return savedProjects ? (JSON.parse(savedProjects) as Project[]) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const stats = [
     {
       title: "Current Projects",
-      value: "0",
+      value: String(projects.length),
       subtitle: "Active work",
     },
     {
@@ -29,14 +52,6 @@ function Dashboard() {
       title: "This Month",
       value: "₹0",
       subtitle: "Revenue earned",
-    },
-  ];
-
-  const currentWork = [
-    {
-      name: "No current projects",
-      type: "Website / Marketing / Development",
-      progress: 0,
     },
   ];
 
@@ -67,9 +82,7 @@ function Dashboard() {
           >
             <p className="text-sm text-slate-400">{stat.title}</p>
 
-            <h2 className="mt-3 text-3xl font-bold">
-              {stat.value}
-            </h2>
+            <h2 className="mt-3 text-3xl font-bold">{stat.value}</h2>
 
             <p className="mt-2 text-xs text-slate-500">
               {stat.subtitle}
@@ -91,34 +104,65 @@ function Dashboard() {
             </div>
 
             <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs text-blue-400">
-              0 Active
+              {projects.length} Active
             </span>
           </div>
 
-          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-            {currentWork.map((work) => (
-              <div key={work.name}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">{work.name}</h3>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {work.type}
-                    </p>
+          <div className="space-y-3">
+            {projects.length === 0 ? (
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <h3 className="font-medium">No current projects</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Add a project to see your active work here.
+                </p>
+              </div>
+            ) : (
+              projects.map((project) => (
+                <div
+                  key={project.id}
+                  className="rounded-xl border border-slate-800 bg-slate-950 p-4"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <h3 className="truncate font-medium">
+                        {project.name}
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {project.type} / {project.technology}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Client: {project.client}
+                      </p>
+                    </div>
+
+                    <span className="shrink-0 text-sm text-slate-400">
+                      {project.progress}%
+                    </span>
                   </div>
 
-                  <span className="text-sm text-slate-400">
-                    {work.progress}%
-                  </span>
-                </div>
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
+                    <div
+                      className="h-full rounded-full bg-blue-600 transition-all"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          Math.max(0, project.progress)
+                        )}%`,
+                      }}
+                    />
+                  </div>
 
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
-                  <div
-                    className="h-full rounded-full bg-blue-600"
-                    style={{ width: `${work.progress}%` }}
-                  />
+                  <div className="mt-3 flex flex-wrap justify-between gap-2 text-xs text-slate-500">
+                    <span>
+                      Deadline: {project.deadline || "Not set"}
+                    </span>
+                    <span>
+                      Revenue: {project.revenue || "Not set"}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </section>
 
