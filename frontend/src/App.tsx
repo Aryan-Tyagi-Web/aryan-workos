@@ -1,5 +1,6 @@
 
 
+
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import CurrentProjects from "./pages/CurrentProjects";
@@ -10,10 +11,10 @@ import Sidebar from "./components/Sidebar";
 function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-slate-950">
+      <div className="min-h-screen bg-slate-950 text-white">
         <Sidebar />
 
-        <main className="ml-64 min-h-screen">
+        <main className="min-h-screen min-w-0 w-full md:ml-64 md:w-[calc(100%-16rem)]">
           <Routes>
             <Route
               path="/dashboard"
@@ -55,3 +56,4 @@ function App() {
 }
 
 export default App;
+
