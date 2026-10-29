@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Project = {
   id: number;
@@ -12,7 +12,22 @@ type Project = {
 };
 
 function CurrentProjects() {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<Project[]>(() => {
+  try {
+    const savedProjects = localStorage.getItem("aryan-workos-projects");
+    return savedProjects ? JSON.parse(savedProjects) as Project[] : [];
+  } catch {
+    return [];
+  }
+});
+
+useEffect(() => {
+  localStorage.setItem(
+    "aryan-workos-projects",
+    JSON.stringify(projects)
+  );
+}, [projects]);
+
   const [showForm, setShowForm] = useState(false);
 
   const [form, setForm] = useState({
