@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 
 type Project = {
@@ -11,34 +12,45 @@ type Project = {
   revenue: string;
 };
 
+type ProjectForm = Omit<Project, "id">;
+
+const initialForm: ProjectForm = {
+  name: "",
+  client: "",
+  type: "Website Development",
+  technology: "WordPress",
+  progress: 0,
+  deadline: "",
+  revenue: "",
+};
+
 function CurrentProjects() {
   const [projects, setProjects] = useState<Project[]>(() => {
-  try {
-    const savedProjects = localStorage.getItem("aryan-workos-projects");
-    return savedProjects ? JSON.parse(savedProjects) as Project[] : [];
-  } catch {
-    return [];
-  }
-});
+    try {
+      const savedProjects = localStorage.getItem("aryan-workos-projects");
+      if (!savedProjects) return [];
 
-useEffect(() => {
-  localStorage.setItem(
-    "aryan-workos-projects",
-    JSON.stringify(projects)
-  );
-}, [projects]);
+      const parsed: unknown = JSON.parse(savedProjects);
+      return Array.isArray(parsed) ? (parsed as Project[]) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<ProjectForm>({ ...initialForm });
 
-  const [form, setForm] = useState({
-    name: "",
-    client: "",
-    type: "Website Development",
-    technology: "WordPress",
-    progress: 0,
-    deadline: "",
-    revenue: "",
-  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "aryan-workos-projects",
+        JSON.stringify(projects)
+      );
+    } catch (error) {
+      console.error("Could not save projects:", error);
+    }
+  }, [projects]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -47,102 +59,162 @@ useEffect(() => {
 
     setForm((prev) => ({
       ...prev,
-      [name]: name === "progress" ? Number(value) : value,
+      [name]:
+        name === "progress"
+          ? Math.min(100, Math.max(0, Number(value) || 0))
+          : value,
     }));
   };
 
-  const addProject = (e: React.FormEvent) => {
+  const openAddForm = () => {
+    setEditingId(null);
+    setForm({ ...initialForm });
+    setShowForm(true);
+  };
+
+  const openEditForm = (project: Project) => {
+    setEditingId(project.id);
+
+    setForm({
+      name: project.name,
+      client: project.client,
+      type: project.type,
+      technology: project.technology,
+      progress: project.progress,
+      deadline: project.deadline,
+      revenue: project.revenue,
+    });
+
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setForm({ ...initialForm });
+  };
+
+  const saveProject = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!form.name.trim() || !form.client.trim()) {
       return;
     }
 
-    const newProject: Project = {
-      id: Date.now(),
-      ...form,
-    };
+    if (editingId !== null) {
+      setProjects((prev) =>
+        prev.map((project) =>
+          project.id === editingId
+            ? {
+                ...project,
+                ...form,
+                name: form.name.trim(),
+                client: form.client.trim(),
+              }
+            : project
+        )
+      );
+    } else {
+      const newProject: Project = {
+        id: Date.now(),
+        ...form,
+        name: form.name.trim(),
+        client: form.client.trim(),
+      };
 
-    setProjects((prev) => [...prev, newProject]);
+      setProjects((prev) => [...prev, newProject]);
+    }
 
-    setForm({
-      name: "",
-      client: "",
-      type: "Website Development",
-      technology: "WordPress",
-      progress: 0,
-      deadline: "",
-      revenue: "",
-    });
+    closeForm();
+  };
 
-    setShowForm(false);
+  const deleteProject = (id: number) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this project? This action cannot be undone."
+    );
+
+    if (!confirmed) return;
+
+    setProjects((prev) => prev.filter((project) => project.id !== id));
+
+    if (editingId === id) {
+      closeForm();
+    }
+  };
+
+  const updateProgress = (id: number, progress: number) => {
+    const safeProgress = Math.min(100, Math.max(0, progress));
+
+    setProjects((prev) =>
+      prev.map((project) =>
+        project.id === id ? { ...project, progress: safeProgress } : project
+      )
+    );
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 p-8 text-white">
+    <div className="min-h-screen bg-slate-950 p-5 text-white md:p-8">
       {/* Header */}
       <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold">Current Projects</h1>
-
           <p className="mt-2 text-slate-400">
             Manage your active projects and ongoing work
           </p>
         </div>
 
         <button
-          onClick={() => setShowForm((prev) => !prev)}
+          onClick={showForm ? closeForm : openAddForm}
           className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold transition hover:bg-blue-500"
         >
           {showForm ? "Cancel" : "+ Add Project"}
         </button>
       </div>
 
-      {/* Add Project Form */}
+      {/* Add / Edit Form */}
       {showForm && (
         <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="mb-6 text-lg font-semibold">Add Current Project</h2>
+          <h2 className="mb-6 text-lg font-semibold">
+            {editingId !== null ? "Edit Project" : "Add Current Project"}
+          </h2>
 
           <form
-            onSubmit={addProject}
+            onSubmit={saveProject}
             className="grid grid-cols-1 gap-5 md:grid-cols-2"
           >
-            {/* Project Name */}
             <div>
               <label className="mb-2 block text-sm text-slate-400">
-                Project Name
+                Project Name *
               </label>
-
               <input
                 name="name"
                 value={form.name}
                 onChange={handleChange}
                 placeholder="e.g. Hotel Website"
+                required
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-blue-500"
               />
             </div>
 
-            {/* Client */}
             <div>
               <label className="mb-2 block text-sm text-slate-400">
-                Client
+                Client *
               </label>
-
               <input
                 name="client"
                 value={form.client}
                 onChange={handleChange}
                 placeholder="Client name"
+                required
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-blue-500"
               />
             </div>
 
-            {/* Type */}
             <div>
               <label className="mb-2 block text-sm text-slate-400">
                 Project Type
               </label>
-
               <select
                 name="type"
                 value={form.type}
@@ -158,12 +230,10 @@ useEffect(() => {
               </select>
             </div>
 
-            {/* Technology */}
             <div>
               <label className="mb-2 block text-sm text-slate-400">
                 Technology
               </label>
-
               <select
                 name="technology"
                 value={form.technology}
@@ -181,12 +251,10 @@ useEffect(() => {
               </select>
             </div>
 
-            {/* Progress */}
             <div>
               <label className="mb-2 block text-sm text-slate-400">
                 Progress (%)
               </label>
-
               <input
                 type="number"
                 name="progress"
@@ -198,12 +266,10 @@ useEffect(() => {
               />
             </div>
 
-            {/* Deadline */}
             <div>
               <label className="mb-2 block text-sm text-slate-400">
                 Deadline
               </label>
-
               <input
                 type="date"
                 name="deadline"
@@ -213,28 +279,33 @@ useEffect(() => {
               />
             </div>
 
-            {/* Revenue */}
             <div>
               <label className="mb-2 block text-sm text-slate-400">
-                Project Revenue
+                Project Revenue (₹)
               </label>
-
               <input
                 name="revenue"
                 value={form.revenue}
                 onChange={handleChange}
-                placeholder="₹25,000"
+                placeholder="e.g. 25000"
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-blue-500"
               />
             </div>
 
-            {/* Submit */}
-            <div className="flex items-end">
+            <div className="flex items-end gap-3">
               <button
                 type="submit"
-                className="w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold transition hover:bg-blue-500"
+                className="flex-1 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold transition hover:bg-blue-500"
               >
-                Create Project
+                {editingId !== null ? "Save Changes" : "Create Project"}
+              </button>
+
+              <button
+                type="button"
+                onClick={closeForm}
+                className="rounded-xl border border-slate-700 px-5 py-3 text-sm hover:bg-slate-800"
+              >
+                Cancel
               </button>
             </div>
           </form>
@@ -242,15 +313,11 @@ useEffect(() => {
       )}
 
       {/* Project Count */}
-      <div className="mb-5 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Active Projects</h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            {projects.length} active project
-            {projects.length !== 1 ? "s" : ""}
-          </p>
-        </div>
+      <div className="mb-5">
+        <h2 className="text-lg font-semibold">Active Projects</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          {projects.length} active project{projects.length !== 1 ? "s" : ""}
+        </p>
       </div>
 
       {/* Empty State */}
@@ -261,14 +328,12 @@ useEffect(() => {
           </div>
 
           <h3 className="text-lg font-semibold">No current projects</h3>
-
           <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
-            Add your first active project to start tracking your work,
-            progress, deadline and revenue.
+            Add your first active project to track progress, deadline and revenue.
           </p>
 
           <button
-            onClick={() => setShowForm(true)}
+            onClick={openAddForm}
             className="mt-6 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold transition hover:bg-blue-500"
           >
             + Add Your First Project
@@ -280,20 +345,21 @@ useEffect(() => {
       {projects.length > 0 && (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           {projects.map((project) => (
-            <div
+            <article
               key={project.id}
               className="rounded-2xl border border-slate-800 bg-slate-900 p-6"
             >
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold">{project.name}</h3>
-
+                <div className="min-w-0">
+                  <h3 className="break-words text-lg font-semibold">
+                    {project.name}
+                  </h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    {project.client}
+                    Client: {project.client}
                   </p>
                 </div>
 
-                <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs text-blue-400">
+                <span className="shrink-0 rounded-full bg-blue-500/10 px-3 py-1 text-xs text-blue-400">
                   Active
                 </span>
               </div>
@@ -311,37 +377,72 @@ useEffect(() => {
 
                 <div>
                   <p className="text-xs text-slate-500">Deadline</p>
-                  <p className="mt-1 text-sm">
-                    {project.deadline || "Not set"}
-                  </p>
+                  <p className="mt-1 text-sm">{project.deadline || "Not set"}</p>
                 </div>
 
                 <div>
                   <p className="text-xs text-slate-500">Revenue</p>
                   <p className="mt-1 text-sm">
-                    {project.revenue || "Not set"}
+                    {project.revenue ? `₹${project.revenue.replace(/^₹/, "")}` : "Not set"}
                   </p>
                 </div>
               </div>
 
-              {/* Progress */}
+              {/* Editable Progress */}
               <div className="mt-6">
-                <div className="mb-2 flex justify-between text-xs">
-                  <span className="text-slate-400">Progress</span>
-
-                  <span className="text-slate-300">
+                <div className="mb-2 flex items-center justify-between">
+                  <label
+                    htmlFor={`progress-${project.id}`}
+                    className="text-sm text-slate-400"
+                  >
+                    Progress
+                  </label>
+                  <span className="text-sm font-medium text-slate-300">
                     {project.progress}%
                   </span>
                 </div>
 
+                <input
+                  id={`progress-${project.id}`}
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={project.progress}
+                  onChange={(e) =>
+                    updateProgress(project.id, Number(e.target.value))
+                  }
+                  aria-label={`Update progress for ${project.name}`}
+                  className="w-full cursor-pointer accent-blue-600"
+                />
+
                 <div className="h-2 overflow-hidden rounded-full bg-slate-800">
                   <div
                     className="h-full rounded-full bg-blue-600 transition-all"
-                    style={{ width: `${project.progress}%` }}
+                    style={{
+                      width: `${Math.min(100, Math.max(0, project.progress))}%`,
+                    }}
                   />
                 </div>
               </div>
-            </div>
+
+              {/* Actions */}
+              <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-800 pt-4">
+                <button
+                  onClick={() => openEditForm(project)}
+                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium transition hover:border-blue-500 hover:bg-blue-500/10"
+                >
+                  Edit Project
+                </button>
+
+                <button
+                  onClick={() => deleteProject(project.id)}
+                  className="rounded-lg border border-red-900/70 px-4 py-2 text-sm font-medium text-red-400 transition hover:bg-red-500/10"
+                >
+                  Delete
+                </button>
+              </div>
+            </article>
           ))}
         </div>
       )}
